@@ -1,8 +1,22 @@
+import json
+import requests
 import currency_converter
+from currency import Currency
 import pprint
 import os.path
 
+def load_currency_info():
+    currencies_dict = dict()
+    response = requests.get("https://gist.githubusercontent.com/Fluidbyte/2973986/raw/8bb35718d0c90fdacb388961c98b8d56abc392c9/Common-Currency.json")
+    if response.status_code == 200:
+        content = response.content.decode("utf-8")
+        json_content = json.loads(content)
+        for key, value in json_content.items():
+            currencies_dict[value["code"]] = Currency(value["symbol"], value["name"], value["symbol_native"], value["decimal_digits"], value["rounding"], value["code"], value["name_plural"])
+    return currencies_dict
+
 pp = pprint.PrettyPrinter()
+currencies = load_currency_info()
 
 
 def start_menu():
@@ -19,7 +33,21 @@ def start_menu():
 def main_menu():
     local_currency = input("Please enter local currency :").upper()
     amount = int(input("Please enter amount to convert [Leave blank for base rates] :") or 1)
-    pp.pprint(currency_converter.convert_all(amount, local_currency))
+    dict_of_adjusted_rates = currency_converter.convert_all(amount, local_currency)
+    print(get_rates_string(dict_of_adjusted_rates, amount))
+
+
+
+
+
+def get_rates_string(rates_dict, amount):
+    output = "currency\tamount (" + str(amount) + ")\n"
+    for adjusted_rate in rates_dict:
+        if adjusted_rate in currencies.keys():
+            output += currencies[adjusted_rate].name + "\t\t\t" + str(rates_dict[adjusted_rate]) + "\n"
+        else:
+            output += adjusted_rate + "\t\t\t" + str(rates_dict[adjusted_rate]) + "\n"
+    return output
 
 
 def view_favourite():
@@ -29,7 +57,8 @@ def view_favourite():
         f = open("favefile.cfg", "r")
         fave_file = f.read()
         fave_list = fave_file.splitlines()
-        pp.pprint(currency_converter.convert_selected(amount, local_currency, fave_list))
+        dict_of_adjusted_rates = currency_converter.convert_selected(amount, local_currency, fave_list)
+        print(get_rates_string(dict_of_adjusted_rates, amount))
 
 
 def favourite_list():
